@@ -3,9 +3,33 @@
 // Tablica liczników dla max 2 czujników
 volatile unsigned long globalPulseCounts[2] = {0, 0};
 
-// Osobne funkcje przerwań (muszą być "na zewnątrz" klasy)
-void IRAM_ATTR isr_sensor0() { globalPulseCounts[0]++; }
-void IRAM_ATTR isr_sensor1() { globalPulseCounts[1]++; }
+// --- DODANA SEKCJA FILTRACJI (DEBOUNCE) ---
+// Zmienne przechowujące czas ostatniego impulsu dla każdego czujnika
+volatile unsigned long lastIsrTime0 = 0;
+volatile unsigned long lastIsrTime1 = 0;
+
+// Czas martwy w mikrosekundach (1000us = 1ms).
+// Jeśli impulsy przychodzą częściej, są ignorowane jako szum.
+const unsigned long DEBOUNCE_US = 1000; 
+// ------------------------------------------
+
+// Osobne funkcje przerwań z dodanym warunkiem czasowym
+void IRAM_ATTR isr_sensor0() { 
+  unsigned long now = micros();
+  // Akceptujemy impuls tylko jeśli minęło więcej czasu niż DEBOUNCE_US
+  if (now - lastIsrTime0 > DEBOUNCE_US) {
+    globalPulseCounts[0]++; 
+    lastIsrTime0 = now;
+  }
+}
+
+void IRAM_ATTR isr_sensor1() { 
+  unsigned long now = micros();
+  if (now - lastIsrTime1 > DEBOUNCE_US) {
+    globalPulseCounts[1]++; 
+    lastIsrTime1 = now;
+  }
+}
 
 class RpmSensor {
   private:
@@ -16,7 +40,7 @@ class RpmSensor {
     unsigned long rpm;
 
   public:
-    // Konstruktor teraz wymaga podania ID (0 lub 1)
+    // Konstruktor wymaga podania ID (0 lub 1)
     RpmSensor(int sensorPin, int id, unsigned long readInterval) {
       pin = sensorPin;
       sensorId = id;
@@ -27,9 +51,12 @@ class RpmSensor {
     }
 
     void begin() {
-      pinMode(pin, INPUT); // Pamiętaj o zewnętrznym dzielniku napięcia!
+      // Pamiętaj: przy zasilaniu 5V/12V wymagany zewnętrzny dzielnik napięcia (np. 4.7k + 10k)
+      // oraz ewentualnie kondensator 100nF między pinem a masą dla lepszej filtracji.
+      pinMode(pin, INPUT); 
       
       // Przypisujemy odpowiednią funkcję przerwania zależnie od ID
+      // Używamy FALLING, bo czujnik NJK-5002C zwiera sygnał do masy przy wykryciu magnesu
       if (sensorId == 0) {
         attachInterrupt(digitalPinToInterrupt(pin), isr_sensor0, FALLING);
       } else {
@@ -42,13 +69,14 @@ class RpmSensor {
         float minutes = (millis() - lastTime) / 60000.0;
         lastTime = millis();
 
-        // Pobieramy impulsy z odpowiedniego licznika
+        // Pobieramy impulsy z odpowiedniego licznika w sekcji krytycznej
         noInterrupts();
         unsigned long pulses = globalPulseCounts[sensorId];
-        globalPulseCounts[sensorId] = 0; // Zerujemy licznik
+        globalPulseCounts[sensorId] = 0; // Zerujemy licznik po odczycie
         interrupts();
 
         if (minutes > 0) {
+          // Obliczamy RPM
           rpm = (unsigned long)(pulses / minutes);
         } else {
           rpm = 0;
