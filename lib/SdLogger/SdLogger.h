@@ -6,17 +6,15 @@
 class SdLogger {
   private:
     int _csPin;
-    String _currentFileName; // Przechowuje nazwę pliku (np. /log_5.csv)
+    String _currentFileName;
+    File _logFile;            // Trzymamy otwarty plik
+    unsigned long _lastFlush; // Czas ostatniego zapisu fizycznego
 
   public:
     SdLogger(int csPin);
     
-    // Funkcja szukająca wolnego numeru pliku
     void begin(); 
-    
-    // Zapis danych
     void logData(String data);
-    
-    // Pobranie nazwy pliku (do wyświetlenia na ekranie)
     String getFileName(); 
+    void close(); // Funkcja do bezpiecznego zamknięcia (opcjonalna)
 };
