@@ -46,8 +46,8 @@
 // PRAWA LISTWA (MOLEX -> EKRAN -> GSM)
 // ==========================================
 
-#define PIN_MOLEX_3PIN_1  1   
-#define PIN_MOLEX_3PIN_2  2   
+#define PIN_MOLEX_3PIN_1     
+#define PIN_MOLEX_3PIN_2     
 
 // Ekran OLED (Software SPI)
 #define OLED_RST          42

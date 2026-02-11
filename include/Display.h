@@ -14,7 +14,7 @@ class Display {
       u8g2.begin();
       u8g2.clearBuffer();
       u8g2.setFont(u8g2_font_ncenB08_tr);
-      u8g2.drawStr(10, 30, "System OK");
+      u8g2.drawStr(10, 30, "System Start");
       u8g2.sendBuffer();
     }
 
@@ -26,46 +26,57 @@ class Display {
       u8g2.sendBuffer();
     }
 
-    // Argument 'amps' zamiast 'v1'
-    void updateScreen(float temp, float cpuTemp, unsigned long rpm1, unsigned long rpm2, float amps, float v2, bool b1, bool b2, unsigned long timeMs) {
+    // --- GŁÓWNA FUNKCJA EKRANU ---
+    // Teraz przyjmuje ax, ay, az i wyświetla je na środku
+    void updateScreen(float temp, float cpuTemp, unsigned long rpm1, unsigned long rpm2, float amps, float v2, bool b1, bool b2, bool gpsFix, float ax, float ay, float az) {
       u8g2.clearBuffer();
 
-      // GÓRA
+      // --- GÓRA (Status) ---
       u8g2.setFont(u8g2_font_5x8_tf);
+      
+      // Temp zewn.
       u8g2.setCursor(0, 8);
-      u8g2.print(timeMs / 1000); u8g2.print("s");
+      u8g2.print("T:"); u8g2.print((int)temp);
 
-      u8g2.setCursor(35, 8);
-      u8g2.print("CPU:"); u8g2.print((int)cpuTemp); u8g2.print("C");
+      // Status GPS
+      u8g2.setCursor(40, 8);
+      if (gpsFix) u8g2.print("GPS[+]"); else u8g2.print("GPS[ ]");
 
+      // Temp CPU
       u8g2.setCursor(90, 8);
-      if (b1) u8g2.print("[1]"); else u8g2.print(" . ");
-      if (b2) u8g2.print("[2]"); else u8g2.print(" . ");
+      u8g2.print("CPU:"); u8g2.print((int)cpuTemp);
+      
       u8g2.drawLine(0, 10, 128, 10);
 
-      // ŚRODEK
-      u8g2.setFont(u8g2_font_ncenB08_tr); 
-      u8g2.setCursor(0, 26);
-      u8g2.print("Ext Temp: "); 
-      if(temp <= -50) u8g2.print("--"); else u8g2.print(temp, 1);
+      // --- ŚRODEK (G-FORCE) ---
+      // Wyświetlamy X i Y wielką czcionką
+      u8g2.setFont(u8g2_font_6x12_tf); 
+      u8g2.setCursor(0, 25);
+      u8g2.print("X: "); u8g2.print(ax, 2); // 2 miejsca po przecinku
+      
+      u8g2.setCursor(64, 25);
+      u8g2.print("Y: "); u8g2.print(ay, 2);
 
-      // DÓŁ - DANE
+      u8g2.drawLine(0, 30, 128, 30);
+
+      // --- DÓŁ (Silnik) ---
       u8g2.setFont(u8g2_font_6x10_tf);
 
-      // Lewa strona (RPM1 i Prąd)
+      // Lewa kolumna
       u8g2.setCursor(0, 42);
       u8g2.print("R1:"); u8g2.print(rpm1);
       
       u8g2.setCursor(0, 56);
-      u8g2.print("I :"); u8g2.print(amps, 1); u8g2.print("A"); // Wyświetlamy Prąd
+      u8g2.print("I :"); u8g2.print(amps, 1); u8g2.print("A"); 
 
-      // Prawa strona (RPM2 i Volt2)
+      // Prawa kolumna
       u8g2.setCursor(68, 42);
       u8g2.print("R2:"); u8g2.print(rpm2);
       
       u8g2.setCursor(68, 56);
       u8g2.print("V2:"); u8g2.print(v2, 1); u8g2.print("V");
       
+      // Pionowa kreska na dole
       u8g2.drawLine(64, 32, 64, 64);
       u8g2.sendBuffer();
     }
