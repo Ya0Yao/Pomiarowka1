@@ -26,9 +26,8 @@ class Display {
       u8g2.sendBuffer();
     }
 
-    // --- GŁÓWNA FUNKCJA EKRANU ---
-    // Teraz przyjmuje ax, ay, az i wyświetla je na środku
-    void updateScreen(float temp, float cpuTemp, unsigned long rpm1, unsigned long rpm2, float amps, float v2, bool b1, bool b2, bool gpsFix, float ax, float ay, float az) {
+    // Dodane dwa parametry na końcu: bool gsmReady, unsigned long gsmPing
+    void updateScreen(float temp, float cpuTemp, unsigned long rpm1, unsigned long rpm2, float amps, float v2, bool b1, bool b2, bool gpsFix, float ax, float ay, float az, bool gsmReady, unsigned long gsmPing) {
       u8g2.clearBuffer();
 
       // --- GÓRA (Status) ---
@@ -38,21 +37,27 @@ class Display {
       u8g2.setCursor(0, 8);
       u8g2.print("T:"); u8g2.print((int)temp);
 
-      // Status GPS
-      u8g2.setCursor(40, 8);
-      if (gpsFix) u8g2.print("GPS[+]"); else u8g2.print("GPS[ ]");
+      // Status GPS i GSM na środku
+      u8g2.setCursor(30, 8);
+      if (gpsFix) u8g2.print("G[+]"); else u8g2.print("G[ ]");
+      
+      u8g2.setCursor(55, 8);
+      if (gsmReady) {
+        u8g2.print("LTE:"); u8g2.print(gsmPing); // Pokaże np "LTE:125" (czas pingu/wysylania)
+      } else {
+        u8g2.print("LTE[ ]");
+      }
 
       // Temp CPU
-      u8g2.setCursor(90, 8);
+      u8g2.setCursor(95, 8);
       u8g2.print("CPU:"); u8g2.print((int)cpuTemp);
       
       u8g2.drawLine(0, 10, 128, 10);
 
       // --- ŚRODEK (G-FORCE) ---
-      // Wyświetlamy X i Y wielką czcionką
       u8g2.setFont(u8g2_font_6x12_tf); 
       u8g2.setCursor(0, 25);
-      u8g2.print("X: "); u8g2.print(ax, 2); // 2 miejsca po przecinku
+      u8g2.print("X: "); u8g2.print(ax, 2); 
       
       u8g2.setCursor(64, 25);
       u8g2.print("Y: "); u8g2.print(ay, 2);
@@ -62,21 +67,18 @@ class Display {
       // --- DÓŁ (Silnik) ---
       u8g2.setFont(u8g2_font_6x10_tf);
 
-      // Lewa kolumna
       u8g2.setCursor(0, 42);
       u8g2.print("R1:"); u8g2.print(rpm1);
       
       u8g2.setCursor(0, 56);
       u8g2.print("I :"); u8g2.print(amps, 1); u8g2.print("A"); 
 
-      // Prawa kolumna
       u8g2.setCursor(68, 42);
       u8g2.print("R2:"); u8g2.print(rpm2);
       
       u8g2.setCursor(68, 56);
       u8g2.print("V2:"); u8g2.print(v2, 1); u8g2.print("V");
       
-      // Pionowa kreska na dole
       u8g2.drawLine(64, 32, 64, 64);
       u8g2.sendBuffer();
     }
