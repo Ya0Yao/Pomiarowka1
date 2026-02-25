@@ -40,19 +40,20 @@ Button btn1(PIN_BTN_1);
 Button btn2(PIN_BTN_2);
 AccelSensor accel; 
 
-// --- DANE GPS (Współdzielone) ---
+// --- DANE GPS (Współdzielone między rdzeniami) ---
 SemaphoreHandle_t gpsMutex; 
 struct SharedGpsData {
   double lat = 0.0; double lon = 0.0;
   float alt = 0.0; float speed = 0.0;
   int sats = 0; bool fix = false;
+  float pdop = 99.9;
   unsigned long pkts = 0;
 } gpsData;
 
-// --- DANE GSM (Współdzielone) ---
+// --- DANE GSM (Współdzielone między rdzeniami) ---
 SemaphoreHandle_t gsmMutex;
-String gsmPayloadBuffer = ""; // Pudełko na 10 pomiarów
-int gsmSampleCount = 0;       // Licznik pomiarów
+String gsmPayloadBuffer = ""; 
+int gsmSampleCount = 0;       
 bool isGsmReady = false;
 unsigned long lastSendTimeMs = 0;
 
@@ -83,7 +84,7 @@ String sendAT(String cmd, unsigned long timeout) {
       char c = Serial2.read();
       response += c;
     }
-    vTaskDelay(pdMS_TO_TICKS(1)); // <--- ODDECH DLA WATCHDOGA
+    vTaskDelay(pdMS_TO_TICKS(1)); 
   }
   return response;
 }
@@ -97,7 +98,7 @@ unsigned long sendTelemetryPacket(String data) {
   bool readyToSend = false;
   while (millis() - waitStart < 500) {
     if (Serial2.available() && Serial2.read() == '>') { readyToSend = true; break; }
-    vTaskDelay(pdMS_TO_TICKS(1)); // <--- ODDECH DLA WATCHDOGA
+    vTaskDelay(pdMS_TO_TICKS(1)); 
   }
   
   if (readyToSend) {
@@ -106,9 +107,9 @@ unsigned long sendTelemetryPacket(String data) {
     while (millis() - waitStart < 1000) {
       if (Serial2.available()) {
         char c = Serial2.read();
-        if (c == 'K' || c == 'R') break; // Szukamy 'K' z OK lub 'R' z ERROR
+        if (c == 'K' || c == 'R') break; 
       }
-      vTaskDelay(pdMS_TO_TICKS(1)); // <--- ODDECH DLA WATCHDOGA
+      vTaskDelay(pdMS_TO_TICKS(1)); 
     }
   }
   return millis() - startOp;
@@ -120,7 +121,8 @@ unsigned long sendTelemetryPacket(String data) {
 
 void TaskGPS(void *pvParameters) {
   for (;;) {
-    if (myGNSS.checkUblox()) {
+    // Odczyt za pomocą zoptymalizowanej funkcji AutoPVT (10Hz)
+    if (myGNSS.getPVT()) {
       if (xSemaphoreTake(gpsMutex, (TickType_t)10) == pdTRUE) {
         gpsData.fix = (myGNSS.getFixType() > 0);
         gpsData.sats = myGNSS.getSIV();
@@ -128,6 +130,7 @@ void TaskGPS(void *pvParameters) {
         gpsData.lon = myGNSS.getLongitude() / 10000000.0;
         gpsData.alt = myGNSS.getAltitudeMSL() / 1000.0;
         gpsData.speed = myGNSS.getGroundSpeed() * 0.0036; 
+        gpsData.pdop = myGNSS.getPDOP() / 100.0;
         gpsData.pkts++;
         xSemaphoreGive(gpsMutex);
       }
@@ -137,17 +140,15 @@ void TaskGPS(void *pvParameters) {
 }
 
 void TaskGSM(void *pvParameters) {
-  // 1. Inicjalizacja sprzętowa GSM
   pinMode(GSM_PWR_PIN, OUTPUT);
   digitalWrite(GSM_PWR_PIN, LOW);
   Serial2.begin(GSM_BAUD, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
 
-  // Restart zasilania modułu
   digitalWrite(GSM_PWR_PIN, HIGH); 
   vTaskDelay(pdMS_TO_TICKS(1000)); 
   digitalWrite(GSM_PWR_PIN, LOW);
   
-  vTaskDelay(pdMS_TO_TICKS(5000)); // Czekamy na system A7670E
+  vTaskDelay(pdMS_TO_TICKS(5000)); 
   
   sendAT("ATE0", 1000); 
   sendAT(String("AT+CPIN=\"") + SIM_PIN + "\"", 2000); 
@@ -155,42 +156,33 @@ void TaskGSM(void *pvParameters) {
   sendAT("AT+CNMP=38", 1000); 
   sendAT("AT+COPS=0", 2000);
 
-  // 2. Pętla główna łączności i wysyłania (w nieskończoność)
   for (;;) {
     if (!isGsmReady) {
-      // Próba rejestracji w Play
       String regRes = sendAT("AT+CREG?", 1000);
       if (regRes.indexOf(",1") != -1 || regRes.indexOf(",5") != -1 || regRes.indexOf(",6") != -1) {
-        // Zalogowano! Otwieramy kanał UDP
         sendAT("AT+CGDCONT=1,\"IP\",\"internet\"", 1000);
         sendAT("AT+CGACT=1,1", 2000);
         sendAT("AT+NETOPEN", 2000);
         sendAT("AT+CIPOPEN=0,\"UDP\",\"8.8.8.8\",53", 2000);
         isGsmReady = true;
       } else {
-        vTaskDelay(pdMS_TO_TICKS(2000)); // Brak sieci, czekamy 2 sekundy
+        vTaskDelay(pdMS_TO_TICKS(2000)); 
       }
     } else {
-      // Moduł jest gotowy - sprawdzamy "Pudełko" z telemetrią
       String localPayload = "";
-      
-      // Kopiujemy dane i natychmiast zwalniamy zamek dla głównej pętli
       if (xSemaphoreTake(gsmMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-        if (gsmSampleCount >= 10) { // Mamy równe 10 pomiarów (1 sekunda)
+        if (gsmSampleCount >= 10) { 
           localPayload = gsmPayloadBuffer;
-          gsmPayloadBuffer = ""; // Czyścimy pudełko
+          gsmPayloadBuffer = ""; 
           gsmSampleCount = 0;
         }
         xSemaphoreGive(gsmMutex);
       }
 
-      // Jeśli wyciągnęliśmy pełną paczkę, wypychamy ją w eter
       if (localPayload.length() > 0) {
         lastSendTimeMs = sendTelemetryPacket(localPayload);
       }
     }
-    
-    // Niezbędny oddech dla Watchdoga pomiędzy iteracjami zadania
     vTaskDelay(pdMS_TO_TICKS(10)); 
   }
 }
@@ -204,7 +196,7 @@ void setup() {
   Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
   
   gpsMutex = xSemaphoreCreateMutex();
-  gsmMutex = xSemaphoreCreateMutex(); // Mutex dla paczek telemetrii
+  gsmMutex = xSemaphoreCreateMutex(); 
 
   oled.begin();
   oled.showStatus("SYSTEM START", "Piny 36/37");
@@ -215,15 +207,21 @@ void setup() {
   else oled.showStatus("ADXL BLAD", "Sprawdz 36/37");
   delay(500);
 
-  // START GPS (Rdzeń 0)
+  // START GPS (Zoptymalizowany pod 10Hz)
+  Serial1.setRxBufferSize(1024);
   Serial1.begin(38400, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
   if (myGNSS.begin(Serial1)) {
-    myGNSS.setUART1Output(COM_TYPE_UBX); 
     myGNSS.setNavigationFrequency(10); 
+    myGNSS.setUART1Output(COM_TYPE_UBX); 
+    myGNSS.setAutoPVT(true);
     xTaskCreatePinnedToCore(TaskGPS, "GPS_Task", 4096, NULL, 1, NULL, 0);
+    oled.showStatus("GPS", "10Hz Init OK");
+  } else {
+    oled.showStatus("GPS", "Brak modulu!");
   }
+  delay(500);
   
-  // START GSM (Rdzeń 0)
+  // START GSM 
   oled.showStatus("GSM TASK", "Uruchamianie...");
   xTaskCreatePinnedToCore(TaskGSM, "GSM_Task", 8192, NULL, 1, NULL, 0);
   delay(500);
@@ -240,7 +238,7 @@ void setup() {
   }
   delay(500);
   
-  // Inicjalizacja reszty czujników
+  // Inicjalizacja reszty czujników (w tym wolnych doewntualnej rozbudowy I2C)
   tempModule.begin(); rpmEngine1.begin(); rpmEngine2.begin();
   btn1.begin(); btn2.begin(); ammeter.begin(); batt1.begin(); batt2.begin();
   batt2.setCalibration(CALIB_FACTOR_V2);
@@ -266,7 +264,7 @@ void loop() {
 
     currentAmps = ammeter.readCurrent();
     
-    // Bezpieczne pobranie danych z GPS (mutex)
+    // Bezpieczne pobranie najświeższych danych z GPS
     double lLat=0, lLon=0; float lAlt=0, lSpd=0; int lSats=0; bool lFix=false; unsigned long lPkt=0;
     if (xSemaphoreTake(gpsMutex, (TickType_t)5) == pdTRUE) {
       lLat = gpsData.lat; lLon = gpsData.lon; lAlt = gpsData.alt; lSpd = gpsData.speed; 
@@ -274,7 +272,7 @@ void loop() {
       xSemaphoreGive(gpsMutex);
     }
 
-    // Zbieranie do CSV
+    // Zbieranie do CSV (oryginalny nagłówek pozostaje nienaruszony)
     float t1 = tempModule.getTemp(0); float t2 = tempModule.getTemp(1); float t3 = tempModule.getTemp(2);
     String line = String(currentMillis) + ";" + 
                   toCsv(lLat, 7) + ";" + toCsv(lLon, 7) + ";" + toCsv(lAlt, 2) + ";" + String(lSats) + ";" + 
@@ -309,9 +307,19 @@ void loop() {
   static unsigned long lastScreen = 0;
   if (currentMillis - lastScreen >= 200) {
     lastScreen = currentMillis;
-    bool fix = false;
-    if (xSemaphoreTake(gpsMutex, (TickType_t)5) == pdTRUE) { fix = gpsData.fix; xSemaphoreGive(gpsMutex); }
     
-    oled.updateScreen(extTemps[0], cpuTemp, rpmEngine1.getRPM(), rpmEngine2.getRPM(), currentAmps, v2, b1, b2, fix, accX, accY, accZ, isGsmReady, lastSendTimeMs);
+    bool currentFix = false;
+    int currentSats = 0;
+    float currentPdop = 99.9;
+    
+    if (xSemaphoreTake(gpsMutex, (TickType_t)5) == pdTRUE) { 
+      currentFix = gpsData.fix; 
+      currentSats = gpsData.sats;
+      currentPdop = gpsData.pdop;
+      xSemaphoreGive(gpsMutex); 
+    }
+    
+    // Przekazanie połączonych danych wszystkich czujników na ekran
+    oled.updateScreen(extTemps[0], cpuTemp, rpmEngine1.getRPM(), rpmEngine2.getRPM(), currentAmps, v2, b1, b2, currentFix, currentSats, currentPdop, accX, accY, accZ, isGsmReady, lastSendTimeMs);
   }
 }
