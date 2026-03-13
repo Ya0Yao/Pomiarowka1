@@ -49,11 +49,10 @@
 #define PIN_MOLEX_3PIN_1     
 #define PIN_MOLEX_3PIN_2     
 
-// Ekran OLED (Software SPI)
 #define OLED_RST          42
 #define OLED_DC           41
-#define OLED_CS           40
-#define OLED_CLK          39
+#define OLED_CS           39
+#define OLED_CLK          40
 #define OLED_MOSI         38
 
 // I2C (400kHz)
