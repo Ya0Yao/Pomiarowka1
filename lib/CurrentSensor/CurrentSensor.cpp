@@ -45,13 +45,18 @@ float CurrentSensor::readCurrent() {
   // Obliczenie surowego prądu
   float rawAmps = (voltageDelta / _sensitivity) / (float)_turns;
 
-  // --- KOREKTA OFFSETU ---
-  // Twój czujnik zaniża o 0.35A, więc dodajemy tę wartość.
-  float finalAmps = rawAmps + 0.35; 
+  // =======================================================
+  // --- TRWAŁA KOREKTA OFFSETU ---
+  // Dodajemy sztywne 0.6A do każdego pomiaru.
+  // Jeśli czujnik ZAWIŻA prąd (pokazuje na plusie gdy nie ma prądu), 
+  // zmień znak na minus: rawAmps - 0.6;
+  // =======================================================
+  float finalAmps = rawAmps - 0.6; 
 
   // --- MARTWA STREFA (DEADZONE) ---
   // Jeśli wynik jest bliski zeru (szum), pokaż 0.00
-  if (abs(finalAmps) < 0.2) {
+  // Przy większej poprawce, warto dać ciut większą martwą strefę, np. 0.3A
+  if (abs(finalAmps) < 0.3) {
     return 0.0;
   }
 

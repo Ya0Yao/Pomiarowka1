@@ -24,9 +24,9 @@
 #define PIN_BTN_2         16  
 
 // --- 3. STREFA CYFROWA (Dół) ---
-#define GPS_TX_PIN        17  
-#define GPS_RX_PIN        18  
-#define GPS_BAUD          38400 
+#define GPS_TX_PIN        18  
+#define GPS_RX_PIN        17  
+#define GPS_BAUD          9600 
 
 #define PIN_ONE_WIRE      8   
 

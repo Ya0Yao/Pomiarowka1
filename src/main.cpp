@@ -70,6 +70,11 @@ float currentAmps = 0.0, v1 = 0.0, v2 = 0.0, cpuTemp = 0.0;
 float extTemps[3] = {0.0, 0.0, 0.0};
 float accX = 0.0, accY = 0.0, accZ = 0.0;
 
+// Zmienne do obsługi kalibracji guzikiem:
+unsigned long btn1PressStart = 0;
+bool btn1Held = false;
+bool calibrationDone = false;
+
 // --- EXCEL FIX (Kropka -> Przecinek) ---
 String toCsv(float val, int prec = 2) {
   String s = String(val, prec); s.replace(".", ","); return s;
@@ -344,6 +349,7 @@ void loop() {
   accel.update(); accX = accel.getX(); accY = accel.getY(); accZ = accel.getZ();
   bool b1 = btn1.isPressed(); bool b2 = btn2.isPressed();
 
+ 
   static unsigned long lastLog = 0;
   if (currentMillis - lastLog >= LOG_INTERVAL_MS) {
     lastLog = currentMillis;

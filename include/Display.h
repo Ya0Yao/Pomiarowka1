@@ -26,17 +26,18 @@ class Display {
       u8g2.sendBuffer();
     }
 
+    // Zintegrowana funkcja rysująca wszystkie dane (w tym PDOP)
     void updateScreen(float temp, float cpuTemp, unsigned long rpm1, unsigned long rpm2, float amps, float v2, bool b1, bool b2, bool gpsFix, int sats, float pdop, float ax, float ay, float az, bool gsmReady, unsigned long gsmPing) {
       u8g2.clearBuffer();
 
       // --- GÓRA (Status - max 128 pikseli szerokości) ---
       u8g2.setFont(u8g2_font_5x8_tf);
       
-      // Temp zewn. 
+      // Temp zewn. (zajmie ok 25 px)
       u8g2.setCursor(0, 8);
       u8g2.print("T:"); u8g2.print((int)temp);
 
-      // Status GPS: Satelity / PDOP 
+      // Status GPS: Satelity / PDOP (zajmie ok 40 px)
       u8g2.setCursor(25, 8);
       if (gpsFix) {
         u8g2.print("G:"); u8g2.print(sats); u8g2.print("/"); u8g2.print(pdop, 1);
@@ -44,7 +45,7 @@ class Display {
         u8g2.print("G:[--]");
       }
       
-      // Status GSM
+      // Status GSM (zajmie ok 35 px)
       u8g2.setCursor(68, 8);
       if (gsmReady) {
         u8g2.print("LTE:"); u8g2.print(gsmPing); 
@@ -52,7 +53,7 @@ class Display {
         u8g2.print("LTE[ ]");
       }
 
-      // Temp CPU 
+      // Temp CPU (zajmie ok 20 px)
       u8g2.setCursor(105, 8);
       u8g2.print("C:"); u8g2.print((int)cpuTemp);
       
