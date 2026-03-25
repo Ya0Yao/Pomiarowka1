@@ -1,3 +1,4 @@
+
 #include <Arduino.h>
 #include <SD.h>
 #include <SPI.h>
@@ -418,3 +419,218 @@ void loop() {
     oled.updateScreen(extTemps[0], cpuTemp, rpmEngine1.getRPM(), rpmEngine2.getRPM(), currentAmps, v2, b1, b2, currentFix, currentSats, currentPdop, accX, accY, accZ, isGsmReady, lastSendTimeMs);
   }
 }
+// // #include <Arduino.h>
+// // #include <U8g2lib.h>
+// // #include <SPI.h>
+
+// // // Piny GPS (z Twojego Config.h)
+// // #define GPS_RX_PIN 18
+// // #define GPS_TX_PIN 17
+// // #define GPS_BAUD 38400
+
+// // // Piny OLED (z Twojego Config.h)
+// // #define OLED_RST  42
+// // #define OLED_DC   41
+// // #define OLED_CS   39
+// // #define OLED_CLK  40
+// // #define OLED_MOSI 38
+
+// // // Inicjalizacja ekranu (dokładnie taka sama jak w Twoim projekcie)
+// // U8G2_SH1106_128X64_NONAME_F_4W_SW_SPI u8g2(U8G2_R0, OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RST);
+
+// // String nmeaBuffer = ""; // Bufor na zbieranie znaków w jedną linię
+
+// // void setup() {
+// //   // Port do komunikacji z komputerem
+// //   Serial.begin(115200);
+  
+// //   // Port sprzętowy do komunikacji z GPS
+// //   Serial1.begin(GPS_BAUD, SERIAL_8N1, GPS_RX_PIN, GPS_TX_PIN);
+
+// //   // Uruchomienie ekranu OLED
+// //   u8g2.begin();
+// //   u8g2.clearBuffer();
+// //   u8g2.setFont(u8g2_font_5x8_tf); // Mała czcionka, idealna do logów
+// //   u8g2.drawStr(0, 15, "--- TEST GPS ---");
+// //   u8g2.drawStr(0, 35, "Nasluchiwanie na:");
+// //   u8g2.drawStr(0, 45, "RX: 17, TX: 18");
+// //   u8g2.drawStr(0, 55, "Baud: 38400");
+// //   u8g2.sendBuffer();
+  
+// //   delay(2000); // Zostawiamy napis powitalny na 2 sekundy
+// // }
+
+// // void loop() {
+// //   // Czytaj wszystko, co przychodzi od GPS
+// //   while (Serial1.available()) {
+// //     char c = Serial1.read();
+    
+// //     // Równolegle wysyłamy też do Serial Monitora (do komputera)
+// //     Serial.print(c); 
+    
+// //     // Jeśli znak to koniec linii (\n)
+// //     if (c == '\n') {
+// //       // Wyświetlamy na OLED tylko ramki z danymi (zaczynające się od $GN)
+// //       if (nmeaBuffer.startsWith("$GN")) {
+// //          u8g2.clearBuffer();
+// //          u8g2.setCursor(0, 10);
+// //          u8g2.print("Ostatnia ramka GPS:");
+         
+// //          // Ramki NMEA są bardzo długie (często ponad 70 znaków). 
+// //          // Dzielimy je na 4 wiersze po 25 znaków, żeby nie wyszły poza ekran.
+// //          u8g2.setCursor(0, 25); u8g2.print(nmeaBuffer.substring(0, 25));
+// //          u8g2.setCursor(0, 35); u8g2.print(nmeaBuffer.substring(25, 50));
+// //          u8g2.setCursor(0, 45); u8g2.print(nmeaBuffer.substring(50, 75));
+// //          u8g2.setCursor(0, 55); u8g2.print(nmeaBuffer.substring(75, 100));
+         
+// //          u8g2.sendBuffer();
+// //       }
+      
+// //       // Czyścimy bufor, żeby przygotować się na nową linijkę
+// //       nmeaBuffer = ""; 
+      
+// //     } else if (c != '\r') { // Ignorujemy znak powrotu karetki
+// //       // Dodajemy kolejne literki do bufora
+// //       nmeaBuffer += c;
+// //     }
+// //   }
+// // }
+
+// #include <Arduino.h>
+// #include <U8g2lib.h>
+// #include <SPI.h>
+
+// // ==========================================
+// // PINY I USTAWIENIA (zgodne z Twoim Config.h)
+// // ==========================================
+// // --- GSM ---
+// #define GSM_TX_PIN  32  
+// #define GSM_RX_PIN  28  
+// #define GSM_PWR_PIN 21  
+// #define GSM_BAUD    115200
+
+// // --- OLED ---
+// #define OLED_RST  42
+// #define OLED_DC   41
+// #define OLED_CS   39
+// #define OLED_CLK  40
+// #define OLED_MOSI 38
+
+// // Twój kod PIN do karty SIM
+// #define SIM_PIN "0966"
+
+// // Inicjalizacja ekranu
+// U8G2_SH1106_128X64_NONAME_F_4W_SW_SPI u8g2(U8G2_R0, OLED_CLK, OLED_MOSI, OLED_CS, OLED_DC, OLED_RST);
+
+// // Tablica przechowująca 6 ostatnich linijek na ekranie
+// String lines[6] = {"", "", "", "", "", ""}; 
+
+// // ==========================================
+// // FUNKCJE POMOCNICZE
+// // ==========================================
+
+// // Dodaje nową linijkę na dół ekranu i przesuwa resztę do góry
+// void addLine(String newLine) {
+//   for (int i = 0; i < 5; i++) {
+//     lines[i] = lines[i+1];
+//   }
+//   lines[5] = newLine;
+  
+//   u8g2.clearBuffer();
+//   u8g2.setFont(u8g2_font_5x8_tf);
+//   for (int i = 0; i < 6; i++) {
+//     u8g2.setCursor(0, 10 + (i * 10));
+//     u8g2.print(lines[i]);
+//   }
+//   u8g2.sendBuffer();
+// }
+
+// // Wysyła komendę AT i wyświetla odpowiedź na ekranie
+// void sendCommand(String cmd, int waitTimeMs) {
+//   addLine("-> " + cmd);  // Pokaż co wysyłamy
+//   Serial2.println(cmd);  // Wyślij do modułu
+  
+//   unsigned long start = millis();
+//   String responseLine = "";
+  
+//   while (millis() - start < waitTimeMs) {
+//     while (Serial2.available()) {
+//       char c = Serial2.read();
+      
+//       if (c == '\n') {
+//         // Ignorujemy puste linie, powtórzenia komendy i same znaki powrotu
+//         if (responseLine.length() > 0 && responseLine != cmd && responseLine != "\r") {
+//           responseLine.replace("\r", ""); 
+          
+//           // Ucinamy tekst, żeby nie wyszedł poza szerokość ekranu
+//           if(responseLine.length() > 25) {
+//              responseLine = responseLine.substring(0, 25);
+//           }
+//           addLine(responseLine);
+//         }
+//         responseLine = "";
+//       } else if (c != '\r') {
+//         responseLine += c;
+//       }
+//     }
+//   }
+// }
+
+// // ==========================================
+// // GŁÓWNY PROGRAM
+// // ==========================================
+
+// void setup() {
+//   // 1. Ekran Powitalny
+//   u8g2.begin();
+//   u8g2.clearBuffer();
+//   u8g2.setFont(u8g2_font_5x8_tf);
+//   u8g2.drawStr(0, 10, "--- AUTO TEST LTE ---");
+//   u8g2.drawStr(0, 30, "Wzbudzam modul...");
+//   u8g2.sendBuffer();
+
+//   // 2. Sprzętowe Włączenie Modułu (Impuls)
+//   pinMode(GSM_PWR_PIN, OUTPUT);
+//   digitalWrite(GSM_PWR_PIN, HIGH);
+//   delay(1000); 
+//   digitalWrite(GSM_PWR_PIN, LOW);
+  
+//   u8g2.drawStr(0, 50, "Bootowanie (7 sek)...");
+//   u8g2.sendBuffer();
+//   delay(7000); // Czas na załadowanie systemu w module
+
+//   // 3. Start Portu GSM
+//   Serial2.begin(GSM_BAUD, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
+  
+//   addLine("Gotowe!");
+//   delay(1000);
+  
+//   // 4. Konfiguracja i Autoryzacja
+//   // Wyłączamy echo
+//   Serial2.println("ATE0");
+//   delay(500);
+//   while(Serial2.available()) Serial2.read(); // Czyszczenie śmieci z bufora
+
+//   // Wpisujemy kod PIN
+//   addLine("Odblokowuje SIM...");
+//   sendCommand(String("AT+CPIN=\"") + SIM_PIN + "\"", 2000); 
+  
+//   addLine("Czekam na siec...");
+//   delay(4000); // Dajemy czas na zalogowanie do BTS-a po podaniu PIN-u
+// }
+
+// void loop() {
+//   // Co 5 sekund odpytujemy układ
+  
+//   // Test komunikacji
+//   sendCommand("AT", 1000);
+  
+//   // Sprawdzenie zasięgu anteny (0-31 = ok, 99 = brak anteny/zasięgu)
+//   sendCommand("AT+CSQ", 1000);
+  
+//   // Sprawdzenie logowania do sieci (0,1 = sieć domowa, 0,5 = roaming)
+//   sendCommand("AT+CREG?", 1000);
+  
+//   addLine("-------------------------");
+//   delay(4000); // Odczekaj przed kolejnym cyklem
+// }

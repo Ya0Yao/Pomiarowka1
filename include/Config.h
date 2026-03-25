@@ -24,15 +24,15 @@
 #define PIN_BTN_2         16  
 
 // --- 3. STREFA CYFROWA (Dół) ---
-#define GPS_TX_PIN        18  
-#define GPS_RX_PIN        17  
+#define GPS_TX_PIN        17  
+#define GPS_RX_PIN        18  
 #define GPS_BAUD          9600 
 
-#define PIN_ONE_WIRE      8   
+#define PIN_ONE_WIRE      16 
 
 // RPM - Piny bezpieczne jako input (JTAG/LOG)
 #define PIN_RPM_1         3   
-#define PIN_RPM_2         46  
+#define PIN_RPM_2         8  
 
 // --- 4. STREFA SPI i EXPANSION (Sam Dół) ---
 #define EXT_INT_PIN       9   
@@ -61,8 +61,8 @@
 #define ADXL343_ADDR      0x53
 
 // GSM (Prawy Dolny Róg)
-#define GSM_TX_PIN        35  
-#define GSM_RX_PIN        47  
+#define GSM_TX_PIN        47
+#define GSM_RX_PIN        35
 #define GSM_PWR_PIN       21  
 #define GSM_BAUD          115200
 
